@@ -1,8 +1,35 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
 import { requireContext } from '@/lib/auth/context'
+import { listResources, createResource } from '@/lib/services/resource'
 import { apiError } from '@/lib/http'
-const input=z.object({name:z.string().trim().min(2).max(120),categoryId:z.string().uuid(),description:z.string().max(1000).optional()})
-export async function GET(){try{const c=await requireContext();const db=await createClient();const {data,error}=await db.from('resources').select('*,resource_categories(name),pricing_rules(*)').eq('venue_id',c.venueId!).order('name');if(error)throw error;return NextResponse.json(data)}catch(error){return apiError(error)}}
-export async function POST(request:Request){try{const c=await requireContext(['OWNER','MANAGER']);const body=input.parse(await request.json());const db=await createClient();const {data,error}=await db.from('resources').insert({venue_id:c.venueId!,name:body.name,category_id:body.categoryId,description:body.description}).select().single();if(error)throw error;return NextResponse.json(data,{status:201})}catch(error){return apiError(error)}}
+
+const input = z.object({
+  name: z.string().trim().min(2).max(120),
+  categoryId: z.string().optional(),
+  categoryName: z.string().optional(),
+  description: z.string().max(1000).optional(),
+  imageUrl: z.string().max(2000).optional().nullable().or(z.literal('')),
+  hourlyRate: z.coerce.number().min(0).optional()
+})
+
+export async function GET() {
+  try {
+    const c = await requireContext()
+    const resources = await listResources(c.venueId!)
+    return NextResponse.json(resources)
+  } catch (error) {
+    return apiError(error)
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const c = await requireContext(['OWNER', 'MANAGER'])
+    const body = input.parse(await request.json())
+    const resource = await createResource(c, body)
+    return NextResponse.json(resource, { status: 201 })
+  } catch (error) {
+    return apiError(error)
+  }
+}

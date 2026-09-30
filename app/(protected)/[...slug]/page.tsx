@@ -1,7 +1,0 @@
-import { notFound, redirect } from 'next/navigation'
-import { requireContext } from '@/lib/auth/context'
-
-const pages: Record<string,{title:string;description:string}> = {
-  calendar:{title:'Calendar',description:'Resource schedule, bookings and maintenance blocks.'}, sessions:{title:'Sessions',description:'Live timers, extensions and checkout.'}, bookings:{title:'Bookings',description:'Create, confirm, cancel and manage bookings.'}, resources:{title:'Resources',description:'Resources, availability, maintenance and pricing.'}, customers:{title:'Customers',description:'Phone-first CRM records and history.'}, payments:{title:'Payments',description:'Manual payment records, balances and receipts.'}, reports:{title:'Reports',description:'Revenue, sessions, utilization and payment breakdowns.'}, staff:{title:'Staff',description:'Venue staff, roles and access.'}, settings:{title:'Settings',description:'Venue details, hours, categories and pricing.'}
-}
-export default async function ProtectedPage({params}:{params:Promise<{slug:string[]}>}) { try { const context=await requireContext(); if(context.role==='SUPER_ADMIN') redirect('/super-admin'); const {slug}=await params; const page=slug.length===1?pages[slug[0]]:undefined; if(!page) notFound(); return <main className="dashboard"><p className="eyebrow">VENUE WORKSPACE</p><h1>{page.title}</h1><p className="subtle">{page.description}</p><section className="empty"><p>This protected workspace is ready for its tenant-scoped data view.</p></section></main> } catch { redirect('/login') } }

@@ -1,3 +1,4 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-export async function POST() { const db = await createClient(); await db.auth.signOut(); return NextResponse.json({ ok: true }) }
+import { cookies } from 'next/headers'
+import { revokeLocalSession, sessionCookie } from '@/lib/auth/local'
+export async function POST() { await revokeLocalSession((await cookies()).get(sessionCookie.name)?.value); const response=NextResponse.json({ok:true}); response.cookies.set(sessionCookie.name,'',{...sessionCookie.options,maxAge:0}); return response }

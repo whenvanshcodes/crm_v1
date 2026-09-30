@@ -1,14 +1,111 @@
-import { createClient } from '@/lib/supabase/server'
+import { requireLocal, type LocalContext, type Role } from '@/lib/auth/local'
+import { db } from '@/lib/db'
 
-export type AppRole = 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'RECEPTIONIST' | 'STAFF'
-export type AuthContext = { userId: string; venueId: string | null; role: AppRole }
-export async function requireContext(allowed?: AppRole[]): Promise<AuthContext> {
-  const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('UNAUTHORIZED')
-  const { data: profile } = await supabase.from('profiles').select('venue_id,role,status').eq('id', user.id).single()
-  if (!profile || profile.status !== 'ACTIVE') throw new Error('FORBIDDEN')
-  const context = { userId: user.id, venueId: profile.venue_id, role: profile.role as AppRole }
-  if (allowed && !allowed.includes(context.role)) throw new Error('FORBIDDEN')
-  if (context.role !== 'SUPER_ADMIN' && !context.venueId) throw new Error('FORBIDDEN')
-  return context
+export type AppRole = Role
+export type AuthContext = LocalContext
+export const requireContext = requireLocal
+
+export async function getAppContext() {
+  const ctx = await requireLocal()
+
+  const user = await db.user.findUnique({
+    where: { id: ctx.userId },
+    select: { email: true, phone: true }
+  })
+
+  let activeVenue = null
+  let activeSessionsCount = 0
+  let venueName = 'Parlour'
+
+  if (ctx.venueId) {
+    activeVenue = await db.venue.findUnique({
+      where: { id: ctx.venueId },
+      select: {
+        id: true,
+        name: true,
+        shortName: true,
+        city: true,
+        address: true,
+        phone: true,
+        email: true,
+        currency: true,
+        openingTime: true,
+        closingTime: true,
+        primaryColor: true,
+        secondaryColor: true,
+        logoUrl: true,
+        coverImageUrl: true,
+        dashboardHeroUrl: true
+      }
+    })
+    if (activeVenue) venueName = activeVenue.name
+
+    activeSessionsCount = await db.session.count({
+      where: { venueId: ctx.venueId, status: 'ACTIVE' }
+    })
+  }
+
+  // Venues available for switching
+  let venues: Array<{
+    id: string
+    name: string
+    shortName: string | null
+    city: string | null
+    status: string
+    primaryColor: string | null
+    logoUrl?: string | null
+  }> = []
+
+  if (ctx.role === 'SUPER_ADMIN') {
+    venues = await db.venue.findMany({
+      select: {
+        id: true,
+        name: true,
+        shortName: true,
+        city: true,
+        status: true,
+        primaryColor: true,
+        logoUrl: true
+      },
+      orderBy: { name: 'asc' }
+    })
+  } else if (ctx.role === 'OWNER') {
+    venues = await db.venue.findMany({
+      where: {
+        OR: [{ ownerId: ctx.userId }, { id: ctx.venueId || undefined }]
+      },
+      select: {
+        id: true,
+        name: true,
+        shortName: true,
+        city: true,
+        status: true,
+        primaryColor: true,
+        logoUrl: true
+      },
+      orderBy: { name: 'asc' }
+    })
+  } else if (activeVenue) {
+    venues = [
+      {
+        id: activeVenue.id,
+        name: activeVenue.name,
+        shortName: activeVenue.shortName,
+        city: activeVenue.city,
+        status: 'ACTIVE',
+        primaryColor: activeVenue.primaryColor,
+        logoUrl: activeVenue.logoUrl
+      }
+    ]
+  }
+
+  return {
+    ...ctx,
+    email: user?.email,
+    phone: user?.phone,
+    venueName,
+    activeVenue,
+    venues,
+    activeSessionsCount
+  }
 }
