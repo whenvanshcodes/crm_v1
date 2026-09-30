@@ -1,0 +1,4 @@
+-- Run after creating matching auth.users through Supabase Auth admin tools.
+-- Replace the UUID placeholders with Auth user IDs before use.
+-- insert into public.venues (id,name,phone,status) values ('00000000-0000-0000-0000-0000000000a1','Café A','9999990001','ACTIVE'),('00000000-0000-0000-0000-0000000000b1','Café B','9999990002','ACTIVE');
+-- insert into public.profiles (id,venue_id,name,role,status) values ('SUPER_ADMIN_AUTH_UUID',null,'Platform Admin','SUPER_ADMIN','ACTIVE'),('OWNER_A_AUTH_UUID','00000000-0000-0000-0000-0000000000a1','Owner A','OWNER','ACTIVE'),('OWNER_B_AUTH_UUID','00000000-0000-0000-0000-0000000000b1','Owner B','OWNER','ACTIVE');

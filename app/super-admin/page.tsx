@@ -1,0 +1,5 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { requireContext } from '@/lib/auth/context'
+export default async function SuperAdmin() { try { await requireContext(['SUPER_ADMIN']); const db=await createClient(); const [{count:venues},{count:users},{count:customers},{count:sessions}]=await Promise.all([db.from('venues').select('*',{count:'exact',head:true}),db.from('profiles').select('*',{count:'exact',head:true}),db.from('customers').select('*',{count:'exact',head:true}),db.from('sessions').select('*',{count:'exact',head:true})]); return <main className="dashboard"><p className="eyebrow">PLATFORM ADMINISTRATION</p><h1>Super Admin</h1><section className="metrics"><Metric label="Cafés" value={venues??0}/><Metric label="Users" value={users??0}/><Metric label="Customers" value={customers??0}/><Metric label="Sessions" value={sessions??0}/></section></main> } catch { redirect('/login') } }
+function Metric({label,value}:{label:string;value:number}) { return <article className="metric"><span>{label}</span><strong>{value}</strong></article> }
