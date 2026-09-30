@@ -16,7 +16,7 @@ export default async function ResourcesPage() {
 
   const venueId = ctx.venueId!
 
-  const [resources, categories] = await Promise.all([
+  const [resources, categories, addOns] = await Promise.all([
     db.resource.findMany({
       where: { venueId },
       include: {
@@ -32,6 +32,10 @@ export default async function ResourcesPage() {
     db.resourceCategory.findMany({
       where: { venueId },
       orderBy: { name: 'asc' }
+    }),
+    db.addOn.findMany({
+      where: { venueId, active: true },
+      orderBy: { createdAt: 'desc' }
     })
   ])
 
@@ -50,6 +54,15 @@ export default async function ResourcesPage() {
           }))
         }))}
         categories={categories}
+        initialAddOns={addOns.map((a) => ({
+          id: a.id,
+          name: a.name,
+          description: a.description,
+          pricingType: a.pricingType,
+          price: a.price,
+          active: a.active,
+          categoryName: a.categoryName
+        }))}
       />
     </AppShell>
   )
